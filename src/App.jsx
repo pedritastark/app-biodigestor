@@ -70,7 +70,8 @@ function App() {
         return <ExplanationScreen2 onNext={handleStartQuestionnaire} onPrev={handlePrev} />;
       case 'questionnaire':
         return <QuestionnaireScreen 
-                 question={questions[currentQuestion]} 
+                 question={questions[currentQuestion]}
+		 answers={answers} 
                  onAnswer={handleAnswer} 
                  onNext={handleNextQuestion}
                  onPrev={handlePrev}
