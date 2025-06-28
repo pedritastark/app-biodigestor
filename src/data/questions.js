@@ -1,74 +1,82 @@
-export const questions = [
-  {
-    id: 'selected_livestock_types',
-    title: '¿Qué tipo de ganado tiene en su finca?',
-    type: 'checkbox_group',
+// src/data/questions.js
+
+export const allQuestions = {
+  'primary_activity': {
+    id: 'primary_activity',
+    title: 'Para empezar, ¿cuál es la actividad principal de su finca que genera la mayor cantidad de residuos?',
+    type: 'radio',
     options: [
-      { value: 'bovino', label: 'Ganado Bovino (Vacas, Toros)' },
-      { value: 'porcino', label: 'Ganado Porcino (Cerdos)' },
-      { value: 'aviar', label: 'Ganado Aviar (Pollos, Gallinas)' },
-      { value: 'otro_ganado', label: 'Otro tipo de ganado' }
+      { value: 'ganaderia', label: 'Ganadería (Estiércol)' },
+      { value: 'agricultura', label: 'Agricultura (Residuos de Cosecha)' }
     ]
   },
-  {
-    id: 'animal_counts',
-    title: 'Por favor, ingrese la cantidad aproximada de cada tipo de ganado seleccionado:',
-    type: 'dynamic_number_input',
-    min: 0
+  'livestock_type': {
+    id: 'livestock_type',
+    title: '¿Qué tipo de ganado tiene principalmente en su finca?',
+    type: 'radio',
+    options: [
+      { value: 'bovino', label: 'Ganado Bovino (vacas, toros)' },
+      { value: 'porcino', label: 'Ganado Porcino (cerdos)' },
+      { value: 'aviar', label: 'Ganado Aviar (gallinas, pollos)' }
+    ]
   },
-  {
+  'animal_count': {
+    id: 'animal_count',
+    title: 'Por favor, ingrese la cantidad aproximada de animales:',
+    type: 'number_input'
+  },
+  'crop_residue_type': {
+    id: 'crop_residue_type',
+    title: '¿Qué tipo de residuo de cosecha genera en mayor volumen?',
+    type: 'radio',
+    options: [
+      { value: 'maiz', label: 'Residuos de Maíz (tusa, rastrojo)' },
+      { value: 'papa', label: 'Residuos de Papa (rastrojo, etc.)' },
+      { value: 'hortalizas', label: 'Residuos de Hortalizas (hojas, tallos)' }
+    ]
+  },
+  'crop_residue_amount': {
+    id: 'crop_residue_amount',
+    title: 'Aproximadamente, ¿cuántos kilogramos de este residuo genera al final de un ciclo de cosecha?',
+    type: 'number_input'
+  },
+  'has_secondary_residue': {
+    id: 'has_secondary_residue',
+    // El título de esta pregunta será dinámico, lo definiremos en App.jsx
+    type: 'radio',
+    options: [
+      { value: 'si', label: 'Sí' },
+      { value: 'no', label: 'No' }
+    ]
+  },
+  'water_access': {
     id: 'water_access',
-    title: '¿Tiene acceso constante a agua en su finca?',
+    title: '¿Tiene acceso constante a una fuente de agua en su finca?',
     type: 'radio',
     options: [
       { value: 'abundante', label: 'Sí, agua abundante todo el año' },
       { value: 'suficiente', label: 'Sí, agua suficiente la mayor parte del año' },
-      { value: 'limitada', label: 'Agua limitada o estacional' },
-      { value: 'escasa', label: 'Muy poca agua disponible' }
+      { value: 'limitada', label: 'El acceso al agua es limitado o estacional' }
     ]
   },
-  {
-    id: 'manure_freshness',
-    title: '¿Con qué frecuencia recoge el estiércol de sus animales?',
-    type: 'radio',
-    options: [
-      { value: 'diario', label: 'Diariamente (muy fresco)' },
-      { value: 'semanal', label: 'Semanalmente' },
-      { value: 'mensual', label: 'Mensualmente' },
-      { value: 'ocasional', label: 'Ocasionalmente o cuando es necesario' }
-    ]
-  },
-  {
-    id: 'location_type',
-    title: '¿Dónde está ubicada su finca?',
-    type: 'radio',
-    options: [
-      { value: 'rural_aislada', label: 'Zona rural aislada (sin acceso a gas/electricidad)' },
-      { value: 'rural_conectada', label: 'Zona rural con servicios básicos' },
-      { value: 'periurbana', label: 'Zona periurbana (cerca de centros poblados)' },
-      { value: 'urbana', label: 'Zona urbana' }
-    ]
-  },
-  {
+  'space_available': {
     id: 'space_available',
-    title: '¿Tiene espacio disponible para instalar un biodigestor?',
+    title: '¿Cuenta con un espacio despejado y cercano a la fuente de residuos para la instalación?',
     type: 'radio',
     options: [
-      { value: 'amplio', label: 'Sí, espacio amplio (más de 50m²)' },
-      { value: 'moderado', label: 'Espacio moderado (20-50m²)' },
-      { value: 'limitado', label: 'Espacio limitado (menos de 20m²)' },
-      { value: 'ninguno', label: 'No tengo espacio disponible' }
+      { value: 'amplio', label: 'Sí, un espacio amplio y accesible (más de 50m²)' },
+      { value: 'moderado', label: 'Sí, un espacio moderado (entre 20-50m²)' },
+      { value: 'limitado', label: 'El espacio es muy limitado o de difícil acceso (< 20m²)' }
     ]
   },
-  {
+  'investment_capacity': {
     id: 'investment_capacity',
-    title: '¿Cuál es su capacidad de inversión inicial?',
+    title: '¿Cuál es su capacidad de inversión inicial aproximada para este proyecto?',
     type: 'radio',
     options: [
-      { value: 'alta', label: 'Alta (más de $2,000 USD)' },
-      { value: 'media', label: 'Media ($500 - $2,000 USD)' },
-      { value: 'baja', label: 'Baja (menos de $500 USD)' },
-      { value: 'sin_inversion', label: 'No puedo invertir actualmente' }
+        { value: 'baja', label: 'Baja (Menos de $3,000,000 COP)' },
+        { value: 'media', label: 'Media ($3,000,000 - $8,000,000 COP)' },
+        { value: 'alta', label: 'Alta (Más de $8,000,000 COP)' }
     ]
   }
-];
+};
