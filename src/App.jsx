@@ -1,7 +1,7 @@
-// src/App.jsx
 import React, { useState } from 'react';
-import { allQuestions } from './data/questions.js'; // Importamos el nuevo objeto de preguntas
-import { calculateViability } from './services/viabilityCalculator.js';
+// IMPORTANTE: Asegúrate de que las rutas a tus archivos sean correctas
+import { allQuestions } from './data/questions.js'; 
+import { calculateViability, analyzeViability } from './services/viabilityCalculator.js'; // Importamos AMBAS funciones
 import Layout from './components/Layout';
 import WelcomeScreen from './screens/WelcomeScreen';
 import ExplanationScreen1 from './screens/ExplanationScreen1';
@@ -12,118 +12,99 @@ import ResultsScreen from './screens/ResultsScreen';
 import IdInputScreen from './screens/IdInputScreen';
 
 function App() {
-  // --- ESTADO CENTRAL DE LA APLICACIÓN ---
+  // --- El estado se mantiene igual ---
   const [currentScreen, setCurrentScreen] = useState('welcome');
   const [answers, setAnswers] = useState({});
-  // El estado ahora guarda el ID de la pregunta actual, no un índice numérico
   const [currentQuestionId, setCurrentQuestionId] = useState('primary_activity');
   const [results, setResults] = useState(null);
-  const [questionHistory, setQuestionHistory] = useState([]); // Para poder retroceder
+  const [questionHistory, setQuestionHistory] = useState([]);
 
-  // --- LÓGICA DE NAVEGACIÓN ---
-
-  // Funciones para el flujo inicial
+  // --- LÓGICA DE NAVEGACIÓN (Sin cambios) ---
   const handleStart = () => setCurrentScreen('id_input');
   const handleIdContinue = () => setCurrentScreen('explanation1');
   const handleNextExplanation = () => setCurrentScreen('explanation2');
   const handleStartQuestionnaire = () => {
     setCurrentScreen('questionnaire');
-    setCurrentQuestionId('primary_activity'); // Empezamos en la primera pregunta
-    setQuestionHistory([]); // Limpiamos el historial
+    setCurrentQuestionId('primary_activity');
+    setQuestionHistory([]);
   };
-
-  // Función para manejar las respuestas
   const handleAnswer = (questionId, value) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
   };
-
-  // Función para retroceder (ahora usa el historial)
   const handlePrev = () => {
     const lastQuestionId = questionHistory.pop();
     if (lastQuestionId) {
       setCurrentQuestionId(lastQuestionId);
       setQuestionHistory([...questionHistory]);
     } else {
-      // Si no hay historial, volvemos al flujo anterior
       if (currentScreen === 'questionnaire') setCurrentScreen('explanation2');
       else if (currentScreen === 'explanation2') setCurrentScreen('explanation1');
       else if (currentScreen === 'explanation1') setCurrentScreen('id_input');
       else if (currentScreen === 'id_input') setCurrentScreen('welcome');
     }
   };
-
-  // ¡LA NUEVA LÓGICA INTELIGENTE PARA "SIGUIENTE"!
   const handleNextQuestion = () => {
-    setQuestionHistory(prev => [...prev, currentQuestionId]); // Guardamos la pregunta actual en el historial
-
+    setQuestionHistory(prev => [...prev, currentQuestionId]);
     switch (currentQuestionId) {
       case 'primary_activity':
-        if (answers.primary_activity === 'ganaderia') {
-          setCurrentQuestionId('livestock_type');
-        } else { // 'agricultura'
-          setCurrentQuestionId('crop_residue_type');
-        }
+        answers.primary_activity === 'ganaderia' ? setCurrentQuestionId('livestock_type') : setCurrentQuestionId('crop_residue_type');
         break;
-      
       case 'livestock_type':
         setCurrentQuestionId('animal_count');
         break;
-      
       case 'animal_count':
-        // Después de preguntar por ganadería, preguntamos si también tiene agricultura
         setCurrentQuestionId('has_secondary_residue');
         break;
-
       case 'crop_residue_type':
         setCurrentQuestionId('crop_residue_amount');
         break;
-
       case 'crop_residue_amount':
-        // Después de preguntar por agricultura, preguntamos si también tiene ganadería
         setCurrentQuestionId('has_secondary_residue');
         break;
-      
       case 'has_secondary_residue':
         if (answers.has_secondary_residue === 'si') {
-          // Si dijo que sí, le hacemos las preguntas del otro bloque
-          if (answers.primary_activity === 'ganaderia') {
-            setCurrentQuestionId('crop_residue_type');
-          } else { // 'agricultura'
-            setCurrentQuestionId('livestock_type');
-          }
+          answers.primary_activity === 'ganaderia' ? setCurrentQuestionId('crop_residue_type') : setCurrentQuestionId('livestock_type');
         } else {
-          // Si dijo que no, saltamos a las preguntas comunes
           setCurrentQuestionId('water_access');
         }
         break;
-      
       case 'water_access':
         setCurrentQuestionId('space_available');
         break;
-      
       case 'space_available':
         setCurrentQuestionId('investment_capacity');
         break;
-
       case 'investment_capacity':
-        // Es la última pregunta, finalizamos
         handleFinish();
         break;
-
       default:
-        // Por si acaso, volvemos al inicio
         handleRestart();
     }
   };
 
+  // --- LÓGICA DE FINALIZACIÓN Y CÁLCULO (¡AQUÍ ESTÁ EL CAMBIO!) ---
   const handleFinish = () => {
     setCurrentScreen('loading');
+    
     setTimeout(() => {
-      // Aquí iría el nuevo algoritmo que calcula para ambos modelos y recomienda el mejor
-      const calculatedResults = { isViable: true, score: 95, gasProduction: 5000, reasons: ["Datos de ejemplo"] }; //calculateViability(answers);
-      setResults(calculatedResults);
+      // 1. Llama a la función que calcula los datos técnicos (el puntaje, etc.)
+      const technicalResults = calculateViability(answers);
+      
+      // 2. Llama a la función que analiza el puntaje y genera los comentarios
+      const userAnalysis = analyzeViability(technicalResults.score);
+      
+      // 3. ¡Combina AMBOS resultados en un solo objeto!
+      const finalResults = {
+        ...technicalResults, // Contiene: isViable, score, gasProduction, reasons
+        ...userAnalysis     // Contiene: level, recommendation, emoji
+      };
+
+      console.log("DATOS FINALES QUE SE ENVIARÁN A RESULTS SCREEN:", finalResults);
+
+      // 4. Guarda el objeto combinado en el estado
+      setResults(finalResults);
       setCurrentScreen('results');
-    }, 2000);
+    }, 2000); // Mantenemos el loading para una mejor experiencia de usuario
   };
 
   const handleRestart = () => {
@@ -134,18 +115,15 @@ function App() {
     setQuestionHistory([]);
   };
 
-  // --- RENDERIZADO ---
+  // --- RENDERIZADO (Con el pequeño ajuste final) ---
   const renderScreen = () => {
     let questionObject = allQuestions[currentQuestionId];
-
-    // Lógica para el título dinámico de la pregunta de co-digestión
     if (currentQuestionId === 'has_secondary_residue') {
       const title = answers.primary_activity === 'ganaderia'
         ? "¿Además de su ganado, genera también residuos de cosecha que quisiera aprovechar?"
         : "¿Además de sus cosechas, tiene también animales cuyo estiércol quisiera aprovechar?";
       questionObject = { ...questionObject, title };
     }
-
 
     switch (currentScreen) {
       case 'welcome':
@@ -167,7 +145,13 @@ function App() {
       case 'loading':
         return <LoadingScreen />;
       case 'results':
-        return <ResultsScreen results={results} onRestart={handleRestart} />;
+        // ¡AJUSTE FINAL! Pasamos el objeto 'results' (que ahora lo tiene todo)
+        // tanto a la prop 'results' como a la prop 'analysis'
+        return <ResultsScreen 
+                 results={results} 
+                 analysis={results} 
+                 onRestart={handleRestart} 
+               />;
       default:
         return <WelcomeScreen onStart={handleStart} />;
     }
