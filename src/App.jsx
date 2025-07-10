@@ -1,155 +1,137 @@
-import React, { useState } from 'react';
-// IMPORTANTE: Asegúrate de que las rutas a tus archivos sean correctas
+// src/App.jsx
+
+import React, { useState, useMemo } from 'react';
 import { allQuestions } from './data/questions.js'; 
-import { calculateViability, analyzeViability } from './services/viabilityCalculator.js'; // Importamos AMBAS funciones
-import Layout from './components/Layout';
-import WelcomeScreen from './screens/WelcomeScreen';
-import ExplanationScreen1 from './screens/ExplanationScreen1';
-import ExplanationScreen2 from './screens/ExplanationScreen2';
-import QuestionnaireScreen from './screens/QuestionnaireScreen';
-import LoadingScreen from './screens/LoadingScreen';
-import ResultsScreen from './screens/ResultsScreen';
-import IdInputScreen from './screens/IdInputScreen';
+import { calculateViability, analyzeViability } from './services/viabilityCalculator.js';
+import Layout from './components/Layout.jsx';
+import WelcomeScreen from './screens/WelcomeScreen.jsx';
+import ExplanationScreen1 from './screens/ExplanationScreen1.jsx';
+import ExplanationScreen2 from './screens/ExplanationScreen2.jsx';
+import QuestionnaireScreen from './screens/QuestionnaireScreen.jsx';
+import LoadingScreen from './screens/LoadingScreen.jsx';
+import ResultsScreen from './screens/ResultsScreen.jsx';
+import IdInputScreen from './screens/IdInputScreen.jsx';
 
 function App() {
-  // --- El estado se mantiene igual ---
   const [currentScreen, setCurrentScreen] = useState('welcome');
   const [answers, setAnswers] = useState({});
-  const [currentQuestionId, setCurrentQuestionId] = useState('primary_activity');
-  const [results, setResults] = useState(null);
   const [questionHistory, setQuestionHistory] = useState([]);
+  const [technicalResults, setTechnicalResults] = useState(null);
+  const [userAnalysis, setUserAnalysis] = useState(null);
 
-  // --- LÓGICA DE NAVEGACIÓN (Sin cambios) ---
+  const currentQuestionId = useMemo(() => {
+    if (questionHistory.length === 0 && currentScreen === 'questionnaire') {
+      return 'primary_activity';
+    }
+    return questionHistory[questionHistory.length - 1];
+  }, [questionHistory, currentScreen]);
+
+  // --- LÓGICA DE NAVEGACIÓN ---
   const handleStart = () => setCurrentScreen('id_input');
   const handleIdContinue = () => setCurrentScreen('explanation1');
   const handleNextExplanation = () => setCurrentScreen('explanation2');
   const handleStartQuestionnaire = () => {
+    setAnswers(prev => ({ user_id: prev.user_id })); // Mantiene el user_id pero limpia otras respuestas
+    setQuestionHistory(['primary_activity']);
     setCurrentScreen('questionnaire');
-    setCurrentQuestionId('primary_activity');
-    setQuestionHistory([]);
   };
+
   const handleAnswer = (questionId, value) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
   };
-  const handlePrev = () => {
-    const lastQuestionId = questionHistory.pop();
-    if (lastQuestionId) {
-      setCurrentQuestionId(lastQuestionId);
-      setQuestionHistory([...questionHistory]);
+
+  const handleNext = () => {
+    const currentQuestion = allQuestions[currentQuestionId];
+    if (!currentQuestion) return; // Guarda de seguridad
+
+    const nextQuestionId = currentQuestion.next(answers);
+
+    if (nextQuestionId) {
+      if (!questionHistory.includes(nextQuestionId)) {
+        setQuestionHistory(prev => [...prev, nextQuestionId]);
+      } else {
+        const existingHistory = questionHistory.slice(0, questionHistory.indexOf(nextQuestionId) + 1);
+        setQuestionHistory(existingHistory);
+      }
     } else {
-      if (currentScreen === 'questionnaire') setCurrentScreen('explanation2');
-      else if (currentScreen === 'explanation2') setCurrentScreen('explanation1');
-      else if (currentScreen === 'explanation1') setCurrentScreen('id_input');
-      else if (currentScreen === 'id_input') setCurrentScreen('welcome');
-    }
-  };
-  const handleNextQuestion = () => {
-    setQuestionHistory(prev => [...prev, currentQuestionId]);
-    switch (currentQuestionId) {
-      case 'primary_activity':
-        answers.primary_activity === 'ganaderia' ? setCurrentQuestionId('livestock_type') : setCurrentQuestionId('crop_residue_type');
-        break;
-      case 'livestock_type':
-        setCurrentQuestionId('animal_count');
-        break;
-      case 'animal_count':
-        setCurrentQuestionId('has_secondary_residue');
-        break;
-      case 'crop_residue_type':
-        setCurrentQuestionId('crop_residue_amount');
-        break;
-      case 'crop_residue_amount':
-        setCurrentQuestionId('has_secondary_residue');
-        break;
-      case 'has_secondary_residue':
-        if (answers.has_secondary_residue === 'si') {
-          answers.primary_activity === 'ganaderia' ? setCurrentQuestionId('crop_residue_type') : setCurrentQuestionId('livestock_type');
-        } else {
-          setCurrentQuestionId('water_access');
-        }
-        break;
-      case 'water_access':
-        setCurrentQuestionId('space_available');
-        break;
-      case 'space_available':
-        setCurrentQuestionId('investment_capacity');
-        break;
-      case 'investment_capacity':
-        handleFinish();
-        break;
-      default:
-        handleRestart();
+      handleFinish();
     }
   };
 
-  // --- LÓGICA DE FINALIZACIÓN Y CÁLCULO (¡AQUÍ ESTÁ EL CAMBIO!) ---
+  const handlePrev = () => {
+    if (currentScreen === 'questionnaire' && questionHistory.length > 1) {
+      setQuestionHistory(prev => prev.slice(0, -1));
+    } else if (currentScreen === 'questionnaire') {
+        setCurrentScreen('explanation2');
+    } else if (currentScreen === 'explanation2') {
+        setCurrentScreen('explanation1');
+    } else if (currentScreen === 'explanation1') {
+        setCurrentScreen('id_input');
+    } else if (currentScreen === 'id_input') {
+        setCurrentScreen('welcome');
+    }
+  };
+  
   const handleFinish = () => {
     setCurrentScreen('loading');
     
     setTimeout(() => {
-      // 1. Llama a la función que calcula los datos técnicos (el puntaje, etc.)
-      const technicalResults = calculateViability(answers);
+      const techResults = calculateViability(answers);
+      const analysis = analyzeViability(techResults);
       
-      // 2. Llama a la función que analiza el puntaje y genera los comentarios
-      const userAnalysis = analyzeViability(technicalResults.score);
-      
-      // 3. ¡Combina AMBOS resultados en un solo objeto!
-      const finalResults = {
-        ...technicalResults, // Contiene: isViable, score, gasProduction, reasons
-        ...userAnalysis     // Contiene: level, recommendation, emoji
-      };
-
-      console.log("DATOS FINALES QUE SE ENVIARÁN A RESULTS SCREEN:", finalResults);
-
-      // 4. Guarda el objeto combinado en el estado
-      setResults(finalResults);
+      setTechnicalResults(techResults);
+      setUserAnalysis(analysis);
       setCurrentScreen('results');
-    }, 2000); // Mantenemos el loading para una mejor experiencia de usuario
+    }, 1500);
   };
 
   const handleRestart = () => {
     setCurrentScreen('welcome');
     setAnswers({});
-    setResults(null);
-    setCurrentQuestionId('primary_activity');
+    setTechnicalResults(null);
+    setUserAnalysis(null);
     setQuestionHistory([]);
   };
 
-  // --- RENDERIZADO (Con el pequeño ajuste final) ---
   const renderScreen = () => {
-    let questionObject = allQuestions[currentQuestionId];
-    if (currentQuestionId === 'has_secondary_residue') {
-      const title = answers.primary_activity === 'ganaderia'
-        ? "¿Además de su ganado, genera también residuos de cosecha que quisiera aprovechar?"
-        : "¿Además de sus cosechas, tiene también animales cuyo estiércol quisiera aprovechar?";
-      questionObject = { ...questionObject, title };
-    }
-
     switch (currentScreen) {
       case 'welcome':
         return <WelcomeScreen onStart={handleStart} />;
       case 'id_input':
-        return <IdInputScreen currentId={answers.user_id || ''} onAnswer={handleAnswer} onContinue={handleIdContinue} onPrev={handlePrev} />;
+        return (
+          <IdInputScreen 
+            currentId={answers.user_id || ''} 
+            onAnswer={handleAnswer}
+            onContinue={handleIdContinue}
+            onPrev={handlePrev}
+            // 👇 AQUÍ CONECTAMOS EL BOTÓN OMITIR 👇
+            onSkip={handleIdContinue} 
+          />
+        );
       case 'explanation1':
         return <ExplanationScreen1 onNext={handleNextExplanation} onPrev={handlePrev} />;
       case 'explanation2':
         return <ExplanationScreen2 onNext={handleStartQuestionnaire} onPrev={handlePrev} />;
       case 'questionnaire':
-        return <QuestionnaireScreen 
-                 question={questionObject}
-                 answers={answers}
-                 onAnswer={handleAnswer} 
-                 onNext={handleNextQuestion}
-                 onPrev={handlePrev}
-               />;
+        // Nos aseguramos de que no intente renderizar si no hay una pregunta actual
+        if (!currentQuestionId) return <LoadingScreen />;
+        return (
+          <QuestionnaireScreen 
+            question={allQuestions[currentQuestionId]}
+            answers={answers}
+            onAnswer={handleAnswer} 
+            onNext={handleNext}
+            onPrev={handlePrev}
+            questionHistory={questionHistory}
+            totalQuestions={10} // Un número aproximado para la barra de progreso
+          />
+        );
       case 'loading':
         return <LoadingScreen />;
       case 'results':
-        // ¡AJUSTE FINAL! Pasamos el objeto 'results' (que ahora lo tiene todo)
-        // tanto a la prop 'results' como a la prop 'analysis'
         return <ResultsScreen 
-                 results={results} 
-                 analysis={results} 
+                 results={technicalResults} 
+                 analysis={userAnalysis} 
                  onRestart={handleRestart} 
                />;
       default:

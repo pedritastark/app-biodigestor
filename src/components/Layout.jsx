@@ -12,7 +12,7 @@ const Layout = ({ children }) => {
           <h1 className="text-xl font-bold text-gray-800">
             Evaluador de Viabilidad de Biodigestores - Secretaría de Agricultura
           </h1>
-          <img src={logoMinisterio} alt="Logo Ministerio de Agricultura" className="h-12" />
+          <img src={logoMinisterio} alt="Logo Ministerio de Agricultura" className="h-20" />
         </div>
       </header>
       
